@@ -33,7 +33,7 @@ function App() {
     country: '',
     newsletter: false,
     notifications: false,
-    theme: 'light',
+    theme: 'dark',
   });
 
   const [submitted, setSubmitted] = useState(false);
@@ -77,7 +77,7 @@ function App() {
       country: '',
       newsletter: false,
       notifications: false,
-      theme: 'light',
+      theme: 'dark',
     });
     setSubmitted(false);
   };
