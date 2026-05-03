@@ -19,11 +19,6 @@ interface FormData {
   newsletter: boolean;
   notifications: boolean;
   theme: 'light' | 'dark';
-  favoriteMovies: string;
-  favoriteSeries: string;
-  favoriteCartoons: string;
-  favoriteBooks: string;
-  favoriteAnime: string;
   hobbies: string;
   techLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
   programmingLanguages: string;
@@ -43,11 +38,6 @@ function App() {
     newsletter: false,
     notifications: false,
     theme: 'dark',
-    favoriteMovies: '',
-    favoriteSeries: '',
-    favoriteCartoons: '',
-    favoriteBooks: '',
-    favoriteAnime: '',
     hobbies: '',
     techLevel: 'beginner',
     programmingLanguages: '',
@@ -96,11 +86,6 @@ function App() {
       newsletter: false,
       notifications: false,
       theme: 'dark',
-      favoriteMovies: '',
-      favoriteSeries: '',
-      favoriteCartoons: '',
-      favoriteBooks: '',
-      favoriteAnime: '',
       hobbies: '',
       techLevel: 'beginner',
       programmingLanguages: '',
@@ -390,93 +375,6 @@ function App() {
                     onClick={goToNext}
                     className="button-primary"
                   >
-                    Continue to Entertainment
-                  </button>
-                </div>
-              </div>
-            )}
-          </Step>
-
-          {/* Step 4: Entertainment */}
-          <Step
-            id="entertainment"
-            label="Entertainment"
-            description="Tell us about your favorite content"
-          >
-            {({ goToPrevious, goToNext }: StepRenderProps) => (
-              <div className="form-step">
-                <h2>Entertainment Preferences</h2>
-
-                <div className="form-grid">
-                  <div className="form-field form-field--full">
-                    <label htmlFor="favoriteMovies">Favorite Movies</label>
-                    <input
-                      id="favoriteMovies"
-                      type="text"
-                      value={formData.favoriteMovies}
-                      onChange={(e) => updateFormData('favoriteMovies', e.target.value)}
-                      placeholder="e.g. Inception, Interstellar, The Matrix"
-                    />
-                  </div>
-
-                  <div className="form-field form-field--full">
-                    <label htmlFor="favoriteSeries">Favorite TV Series</label>
-                    <input
-                      id="favoriteSeries"
-                      type="text"
-                      value={formData.favoriteSeries}
-                      onChange={(e) => updateFormData('favoriteSeries', e.target.value)}
-                      placeholder="e.g. Breaking Bad, Game of Thrones"
-                    />
-                  </div>
-
-                  <div className="form-field form-field--full">
-                    <label htmlFor="favoriteCartoons">Favorite Cartoons</label>
-                    <input
-                      id="favoriteCartoons"
-                      type="text"
-                      value={formData.favoriteCartoons}
-                      onChange={(e) => updateFormData('favoriteCartoons', e.target.value)}
-                      placeholder="e.g. Avatar, Rick and Morty, Gravity Falls"
-                    />
-                  </div>
-
-                  <div className="form-field form-field--full">
-                    <label htmlFor="favoriteBooks">Favorite Books</label>
-                    <input
-                      id="favoriteBooks"
-                      type="text"
-                      value={formData.favoriteBooks}
-                      onChange={(e) => updateFormData('favoriteBooks', e.target.value)}
-                      placeholder="e.g. Dune, 1984, The Lord of the Rings"
-                    />
-                  </div>
-
-                  <div className="form-field form-field--full">
-                    <label htmlFor="favoriteAnime">Favorite Anime</label>
-                    <input
-                      id="favoriteAnime"
-                      type="text"
-                      value={formData.favoriteAnime}
-                      onChange={(e) => updateFormData('favoriteAnime', e.target.value)}
-                      placeholder="e.g. Attack on Titan, Death Note, Steins;Gate"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-actions-custom">
-                  <button
-                    type="button"
-                    onClick={goToPrevious}
-                    className="button-secondary"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={goToNext}
-                    className="button-primary"
-                  >
                     Continue to Skills
                   </button>
                 </div>
@@ -484,7 +382,7 @@ function App() {
             )}
           </Step>
 
-          {/* Step 5: Skills & Interests */}
+          {/* Step 4: Skills & Interests */}
           <Step
             id="skills"
             label="Skills"
@@ -663,56 +561,10 @@ function App() {
 
                 <div className="review-section">
                   <div className="review-header">
-                    <h3>Entertainment</h3>
-                    <button
-                      type="button"
-                      onClick={() => goToStep(3)}
-                      className="edit-button"
-                      aria-label="Edit entertainment preferences"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                  <dl className="review-list">
-                    {formData.favoriteMovies && (
-                      <div>
-                        <dt>Movies:</dt>
-                        <dd>{formData.favoriteMovies}</dd>
-                      </div>
-                    )}
-                    {formData.favoriteSeries && (
-                      <div>
-                        <dt>Series:</dt>
-                        <dd>{formData.favoriteSeries}</dd>
-                      </div>
-                    )}
-                    {formData.favoriteCartoons && (
-                      <div>
-                        <dt>Cartoons:</dt>
-                        <dd>{formData.favoriteCartoons}</dd>
-                      </div>
-                    )}
-                    {formData.favoriteBooks && (
-                      <div>
-                        <dt>Books:</dt>
-                        <dd>{formData.favoriteBooks}</dd>
-                      </div>
-                    )}
-                    {formData.favoriteAnime && (
-                      <div>
-                        <dt>Anime:</dt>
-                        <dd>{formData.favoriteAnime}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </div>
-
-                <div className="review-section">
-                  <div className="review-header">
                     <h3>Skills & Interests</h3>
                     <button
                       type="button"
-                      onClick={() => goToStep(4)}
+                      onClick={() => goToStep(3)}
                       className="edit-button"
                       aria-label="Edit skills"
                     >
