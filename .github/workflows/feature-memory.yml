@@ -1,0 +1,53 @@
+name: Feature Memory
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  generate-manifest:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Anthropic SDK
+        run: npm install @anthropic-ai/sdk
+
+      - name: Generate feature manifest
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          # Get changed files list
+          git diff --name-only origin/$BASE_REF...origin/$HEAD_REF > /tmp/changed_files.txt || \
+          git diff --name-only HEAD~1...HEAD > /tmp/changed_files.txt
+
+          # Get diff (truncated to 60KB)
+          git diff origin/$BASE_REF...origin/$HEAD_REF -- '*.tsx' '*.ts' '*.jsx' '*.js' '*.css' 2>/dev/null | head -c 61440 > /tmp/pr_diff.txt || \
+          git diff HEAD~1...HEAD -- '*.tsx' '*.ts' '*.jsx' '*.js' '*.css' 2>/dev/null | head -c 61440 > /tmp/pr_diff.txt
+
+          node .github/scripts/generate-manifest.mjs
+
+      - name: Commit manifest
+        run: |
+          git config user.name "bug-pilot[bot]"
+          git config user.email "bug-pilot@users.noreply.github.com"
+          git add .feature-memory/
+          git diff --cached --quiet || git commit -m "chore: feature memory for PR #${{ github.event.pull_request.number }} [skip ci]"
+          git push
