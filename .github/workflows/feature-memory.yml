@@ -22,27 +22,19 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Anthropic SDK
-        run: npm install @anthropic-ai/sdk
+      - name: Install dependencies
+        run: npm install @anthropic-ai/sdk @octokit/rest
 
       - name: Generate feature manifest
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: |
-          # Get changed files list
-          git diff --name-only origin/$BASE_REF...origin/$HEAD_REF > /tmp/changed_files.txt || \
-          git diff --name-only HEAD~1...HEAD > /tmp/changed_files.txt
-
-          # Get diff (truncated to 60KB)
-          git diff origin/$BASE_REF...origin/$HEAD_REF -- '*.tsx' '*.ts' '*.jsx' '*.js' '*.css' 2>/dev/null | head -c 61440 > /tmp/pr_diff.txt || \
-          git diff HEAD~1...HEAD -- '*.tsx' '*.ts' '*.jsx' '*.js' '*.css' 2>/dev/null | head -c 61440 > /tmp/pr_diff.txt
-
-          node .github/scripts/generate-manifest.mjs
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: node .github/scripts/generate-manifest.mjs
 
       - name: Commit manifest
         run: |
