@@ -21,34 +21,46 @@ export const Stepper = ({
 
   const setCurrentStep = useCallback(
     (index: number) => {
-      if (index < 0 || index >= steps.length) {
-        return;
-      }
-
-      if (!allowNonLinear && index > currentStep) {
-        const allPreviousCompleted = steps
-          .slice(0, index)
-          .every((step) => step.status === 'completed');
-
-        if (!allPreviousCompleted) {
-          console.warn('Cannot skip to step. Complete previous steps first.');
-          return;
-        }
-      }
-
+      let didNavigate = false;
       const previousStep = currentStep;
-      setCurrentStepState(index);
 
-      setSteps((prevSteps) =>
-        prevSteps.map((step, i) => ({
+      // Use functional updater so we read the freshest steps state.
+      // This avoids the issue where updateStep(currentStep, 'completed')
+      // was queued just before setCurrentStep, but the closure still saw
+      // the old 'active' status, causing the first click to be ignored.
+      setSteps((prevSteps) => {
+        if (index < 0 || index >= prevSteps.length) {
+          return prevSteps;
+        }
+
+        // Always allow the natural one-step-forward progression.
+        // Only enforce the "all previous completed" check when skipping
+        // ahead by more than one step in linear mode.
+        if (!allowNonLinear && index > previousStep + 1) {
+          const allPreviousCompleted = prevSteps
+            .slice(0, index)
+            .every((step) => step.status === 'completed');
+
+          if (!allPreviousCompleted) {
+            console.warn('Cannot skip to step. Complete previous steps first.');
+            return prevSteps;
+          }
+        }
+
+        didNavigate = true;
+        return prevSteps.map((step, i) => ({
           ...step,
-          status: i === index ? 'active' : i < index ? 'completed' : 'pending',
-        }))
-      );
+          status:
+            i === index ? 'active' : i < index ? 'completed' : 'pending',
+        }));
+      });
 
-      onStepChange?.(previousStep, index);
+      if (didNavigate) {
+        setCurrentStepState(index);
+        onStepChange?.(previousStep, index);
+      }
     },
-    [steps.length, currentStep, allowNonLinear, onStepChange, steps]
+    [currentStep, allowNonLinear, onStepChange]
   );
 
   const updateStep = useCallback((index: number, data: Partial<StepData>) => {
