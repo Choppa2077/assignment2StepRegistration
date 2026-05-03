@@ -18,45 +18,54 @@ export const Stepper = ({
   const stepsRegistered = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Keep a ref to the latest steps so setCurrentStep can validate against
-  // fresh state synchronously without relying on a setSteps updater
-  // (whose return value/side-effects only run later in the React batch).
-  const stepsRef = useRef<StepData[]>(steps);
-  useEffect(() => {
-    stepsRef.current = steps;
-  }, [steps]);
-
   const setCurrentStep = useCallback(
     (index: number) => {
-      const latestSteps = stepsRef.current;
-
-      if (index < 0 || index >= latestSteps.length) {
+      if (index < 0) {
         return;
       }
 
       const previousStep = currentStep;
 
-      // Always allow the natural one-step-forward progression.
-      // Only enforce the "all previous completed" check when skipping
-      // ahead by more than one step in linear mode.
-      if (!allowNonLinear && index > previousStep + 1) {
-        const allPreviousCompleted = latestSteps
-          .slice(0, index)
-          .every((step) => step.status === 'completed');
+      // For linear mode, only allow:
+      //  - any backward navigation
+      //  - the natural one-step-forward progression (always allowed)
+      //  - skipping forward only if all in-between steps are already completed
+      // We validate skip-ahead inside the functional setSteps updater so that
+      // we always read the freshest step state (avoids stale-closure / stale-ref bugs).
+      let didNavigate = true;
 
-        if (!allPreviousCompleted) {
-          console.warn('Cannot skip to step. Complete previous steps first.');
-          return;
+      setSteps((prevSteps) => {
+        if (prevSteps.length === 0 || index >= prevSteps.length) {
+          didNavigate = false;
+          return prevSteps;
         }
-      }
 
-      setSteps((prevSteps) =>
-        prevSteps.map((step, i) => ({
+        const isOneStepForward = index === previousStep + 1;
+        const isBackwardOrSame = index <= previousStep;
+
+        if (!allowNonLinear && !isOneStepForward && !isBackwardOrSame) {
+          const allPreviousCompleted = prevSteps
+            .slice(0, index)
+            .every((step) => step.status === 'completed');
+
+          if (!allPreviousCompleted) {
+            console.warn('Cannot skip to step. Complete previous steps first.');
+            didNavigate = false;
+            return prevSteps;
+          }
+        }
+
+        return prevSteps.map((step, i) => ({
           ...step,
           status:
             i === index ? 'active' : i < index ? 'completed' : 'pending',
-        }))
-      );
+        }));
+      });
+
+      if (!didNavigate) {
+        return;
+      }
+
       setCurrentStepState(index);
       onStepChange?.(previousStep, index);
     },
