@@ -24,6 +24,10 @@ interface FormData {
   favoriteCartoons: string;
   favoriteBooks: string;
   favoriteAnime: string;
+  hobbies: string;
+  techLevel: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  programmingLanguages: string;
+  spokenLanguages: string;
 }
 
 function App() {
@@ -44,6 +48,10 @@ function App() {
     favoriteCartoons: '',
     favoriteBooks: '',
     favoriteAnime: '',
+    hobbies: '',
+    techLevel: 'beginner',
+    programmingLanguages: '',
+    spokenLanguages: '',
   });
 
   const [submitted, setSubmitted] = useState(false);
@@ -93,6 +101,10 @@ function App() {
       favoriteCartoons: '',
       favoriteBooks: '',
       favoriteAnime: '',
+      hobbies: '',
+      techLevel: 'beginner',
+      programmingLanguages: '',
+      spokenLanguages: '',
     });
     setSubmitted(false);
   };
@@ -465,6 +477,87 @@ function App() {
                     onClick={goToNext}
                     className="button-primary"
                   >
+                    Continue to Skills
+                  </button>
+                </div>
+              </div>
+            )}
+          </Step>
+
+          {/* Step 5: Skills & Interests */}
+          <Step
+            id="skills"
+            label="Skills"
+            description="Tell us about your skills and interests"
+          >
+            {({ goToPrevious, goToNext }: StepRenderProps) => (
+              <div className="form-step">
+                <h2>Skills & Interests</h2>
+
+                <div className="form-grid">
+                  <div className="form-field form-field--full">
+                    <label htmlFor="hobbies">Hobbies</label>
+                    <input
+                      id="hobbies"
+                      type="text"
+                      value={formData.hobbies}
+                      onChange={(e) => updateFormData('hobbies', e.target.value)}
+                      placeholder="e.g. Photography, Cooking, Hiking"
+                    />
+                  </div>
+
+                  <div className="form-field form-field--full">
+                    <label htmlFor="techLevel">Tech Experience Level</label>
+                    <select
+                      id="techLevel"
+                      value={formData.techLevel}
+                      onChange={(e) =>
+                        updateFormData('techLevel', e.target.value as FormData['techLevel'])
+                      }
+                    >
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                  </div>
+
+                  <div className="form-field form-field--full">
+                    <label htmlFor="programmingLanguages">Programming Languages</label>
+                    <input
+                      id="programmingLanguages"
+                      type="text"
+                      value={formData.programmingLanguages}
+                      onChange={(e) => updateFormData('programmingLanguages', e.target.value)}
+                      placeholder="e.g. TypeScript, Python, Rust"
+                    />
+                  </div>
+
+                  <div className="form-field form-field--full">
+                    <label htmlFor="spokenLanguages">Spoken Languages</label>
+                    <input
+                      id="spokenLanguages"
+                      type="text"
+                      value={formData.spokenLanguages}
+                      onChange={(e) => updateFormData('spokenLanguages', e.target.value)}
+                      placeholder="e.g. English, Russian, Spanish"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-actions-custom">
+                  <button
+                    type="button"
+                    onClick={goToPrevious}
+                    className="button-secondary"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goToNext}
+                    className="button-primary"
+                  >
                     Continue to Review
                   </button>
                 </div>
@@ -472,7 +565,7 @@ function App() {
             )}
           </Step>
 
-          {/* Step 5: Review & Confirm */}
+          {/* Step 6: Review & Confirm */}
           <Step id="review" label="Review" description="Please review your information">
             {({ goToPrevious, goToStep }: StepRenderProps) => (
               <div className="form-step">
@@ -609,6 +702,44 @@ function App() {
                       <div>
                         <dt>Anime:</dt>
                         <dd>{formData.favoriteAnime}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+
+                <div className="review-section">
+                  <div className="review-header">
+                    <h3>Skills & Interests</h3>
+                    <button
+                      type="button"
+                      onClick={() => goToStep(4)}
+                      className="edit-button"
+                      aria-label="Edit skills"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <dl className="review-list">
+                    {formData.hobbies && (
+                      <div>
+                        <dt>Hobbies:</dt>
+                        <dd>{formData.hobbies}</dd>
+                      </div>
+                    )}
+                    <div>
+                      <dt>Tech Level:</dt>
+                      <dd>{formData.techLevel}</dd>
+                    </div>
+                    {formData.programmingLanguages && (
+                      <div>
+                        <dt>Programming:</dt>
+                        <dd>{formData.programmingLanguages}</dd>
+                      </div>
+                    )}
+                    {formData.spokenLanguages && (
+                      <div>
+                        <dt>Languages:</dt>
+                        <dd>{formData.spokenLanguages}</dd>
                       </div>
                     )}
                   </dl>
