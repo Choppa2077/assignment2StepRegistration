@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { StepperContext } from './StepperContext';
 import type { StepperProps, StepData, StepperContextValue } from './types';
@@ -21,33 +20,41 @@ export const Stepper = ({
 
   const setCurrentStep = useCallback(
     (index: number) => {
-      let didNavigate = false;
+      if (index < 0) {
+        return;
+      }
+
       const previousStep = currentStep;
 
-      // Use functional updater so we read the freshest steps state.
-      // This avoids the issue where updateStep(currentStep, 'completed')
-      // was queued just before setCurrentStep, but the closure still saw
-      // the old 'active' status, causing the first click to be ignored.
+      // For linear mode, only allow:
+      //  - any backward navigation
+      //  - the natural one-step-forward progression (always allowed)
+      //  - skipping forward only if all in-between steps are already completed
+      // We validate skip-ahead inside the functional setSteps updater so that
+      // we always read the freshest step state (avoids stale-closure / stale-ref bugs).
+      let didNavigate = true;
+
       setSteps((prevSteps) => {
-        if (index < 0 || index >= prevSteps.length) {
+        if (prevSteps.length === 0 || index >= prevSteps.length) {
+          didNavigate = false;
           return prevSteps;
         }
 
-        // Always allow the natural one-step-forward progression.
-        // Only enforce the "all previous completed" check when skipping
-        // ahead by more than one step in linear mode.
-        if (!allowNonLinear && index > previousStep + 1) {
+        const isOneStepForward = index === previousStep + 1;
+        const isBackwardOrSame = index <= previousStep;
+
+        if (!allowNonLinear && !isOneStepForward && !isBackwardOrSame) {
           const allPreviousCompleted = prevSteps
             .slice(0, index)
             .every((step) => step.status === 'completed');
 
           if (!allPreviousCompleted) {
             console.warn('Cannot skip to step. Complete previous steps first.');
+            didNavigate = false;
             return prevSteps;
           }
         }
 
-        didNavigate = true;
         return prevSteps.map((step, i) => ({
           ...step,
           status:
@@ -55,10 +62,12 @@ export const Stepper = ({
         }));
       });
 
-      if (didNavigate) {
-        setCurrentStepState(index);
-        onStepChange?.(previousStep, index);
+      if (!didNavigate) {
+        return;
       }
+
+      setCurrentStepState(index);
+      onStepChange?.(previousStep, index);
     },
     [currentStep, allowNonLinear, onStepChange]
   );
