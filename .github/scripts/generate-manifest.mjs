@@ -1,20 +1,39 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { Octokit } from "@octokit/rest";
+import { writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-const prNumber = process.env.PR_NUMBER ?? "0";
+const prNumber = Number(process.env.PR_NUMBER);
 const prTitle = process.env.PR_TITLE ?? "Unknown";
 const prBody = process.env.PR_BODY ?? "";
+const owner = process.env.REPO_OWNER;
+const repo = process.env.REPO_NAME;
 
-const changedFiles = existsSync("/tmp/changed_files.txt")
-  ? readFileSync("/tmp/changed_files.txt", "utf8").trim()
-  : "";
+// Fetch changed files via GitHub API
+const { data: files } = await octokit.pulls.listFiles({
+  owner,
+  repo,
+  pull_number: prNumber,
+  per_page: 100,
+});
 
-const diff = existsSync("/tmp/pr_diff.txt")
-  ? readFileSync("/tmp/pr_diff.txt", "utf8").trim()
-  : "";
+const changedFilesList = files
+  .map((f) => `${f.status}: ${f.filename} (+${f.additions}/-${f.deletions})`)
+  .join("\n");
+
+// Fetch diff patches (truncated to 60KB total)
+let diffContent = "";
+let totalSize = 0;
+for (const f of files) {
+  if (f.patch && totalSize < 61440) {
+    const chunk = `--- ${f.filename}\n${f.patch}\n\n`;
+    diffContent += chunk;
+    totalSize += chunk.length;
+  }
+}
 
 const MANIFEST_FORMAT = `---
 pr: {PR_NUMBER}
@@ -28,13 +47,12 @@ features: {COMMA_SEPARATED_FEATURE_KEYWORDS}
 
 ## Changed files
 - \`path/to/file.tsx\` — what changed and why
-- \`path/to/other.ts\` — what changed and why
 
 ## Created files
-- \`path/to/new.tsx\` — what it does
+- \`path/to/new.tsx\` — what it does (omit section if none)
 
 ## Key implementation details
-- {Specific pattern, prop name, API used — enough for a developer or AI to understand how it works}
+- {Specific pattern, prop name, state management, API used}
 - {Breaking changes, migration notes, non-obvious decisions}
 
 ## Likely affected screens
@@ -45,44 +63,43 @@ const prompt = `You are generating a feature memory manifest for a codebase. Thi
 PR #${prNumber}: ${prTitle}
 
 PR description:
-${prBody || "(no description)"}
+${prBody || "(no description provided)"}
 
-Changed files:
-${changedFiles || "(not available)"}
+Changed files (from GitHub API):
+${changedFilesList}
 
-Code diff (may be truncated):
-\`\`\`
-${diff || "(not available)"}
+Code diff:
+\`\`\`diff
+${diffContent || "(no diff available)"}
 \`\`\`
 
 Generate a feature memory manifest using EXACTLY this format:
 ${MANIFEST_FORMAT}
 
 Rules:
-- Replace {DATE} with today's date: ${new Date().toISOString().slice(0, 10)}
+- Replace {DATE} with: ${new Date().toISOString().slice(0, 10)}
 - Replace {PR_NUMBER} with: ${prNumber}
-- features: field — comma-separated keywords: screen names, section names, library names, feature names (e.g. "Registration, StepForm, Validation, React Hook Form")
-- ## Changed files — must use backtick format with description. Only include files that actually changed.
-- ## Created files — only if new files were created. Omit section if none.
-- ## Key implementation details — the most important things for understanding this change: component props, state management patterns, library usage, non-obvious decisions, breaking changes
-- ## Likely affected screens — which other parts of the app could be affected
-- Be specific and technical. This is read by an AI, not a human.
-- Output ONLY the markdown, no other text.`;
+- features: field — comma-separated searchable keywords: screen names, section names, component names, library names (e.g. "Registration, StepForm, Validation, React Hook Form")
+- ## Changed files — use backtick paths with description. List ALL changed files from the list above.
+- ## Created files — only if new files (status: added). Omit section entirely if none.
+- ## Key implementation details — be specific: component props, hooks used, state patterns, breaking changes, non-obvious decisions. This is the most important section.
+- ## Likely affected screens — which other parts could break
+- Be specific and technical. This is read by an AI agent that needs to find and fix bugs.
+- Output ONLY the markdown, starting with ---, no other text.`;
 
-const response = await client.messages.create({
+const response = await anthropic.messages.create({
   model: "claude-haiku-4-5-20251001",
-  max_tokens: 1024,
+  max_tokens: 1500,
   messages: [{ role: "user", content: prompt }],
 });
 
 const manifest = response.content[0].type === "text" ? response.content[0].text.trim() : "";
 
-if (!manifest) {
-  console.error("Empty manifest generated");
+if (!manifest || !manifest.startsWith("---")) {
+  console.error("Invalid manifest generated:", manifest);
   process.exit(1);
 }
 
-// Generate filename
 const date = new Date().toISOString().slice(0, 10);
 const slug = prTitle
   .toLowerCase()
@@ -94,8 +111,7 @@ const filename = `${date}-pr-${prNumber}-${slug}.md`;
 const memoryDir = join(process.cwd(), ".feature-memory");
 if (!existsSync(memoryDir)) mkdirSync(memoryDir, { recursive: true });
 
-const outputPath = join(memoryDir, filename);
-writeFileSync(outputPath, manifest, "utf8");
+writeFileSync(join(memoryDir, filename), manifest, "utf8");
 
-console.log(`Generated: .feature-memory/${filename}`);
+console.log(`✅ Generated: .feature-memory/${filename}`);
 console.log(manifest);
