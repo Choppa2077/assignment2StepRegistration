@@ -25,6 +25,134 @@ interface FormData {
   spokenLanguages: string;
 }
 
+/**
+ * Validate phone numbers for a number of common country codes.
+ *
+ * Strategy:
+ *  - Strip formatting (spaces, dashes, parentheses, dots).
+ *  - Require an explicit country code prefixed with `+` OR a leading `00`
+ *    (international dial-out), unless the number is a 10-digit US/CA
+ *    national format.
+ *  - Match the remaining digits against a length range that is valid
+ *    for the detected country code (E.164 allows 4–15 digits total).
+ */
+const COUNTRY_CODE_RULES: Array<{ code: string; min: number; max: number }> = [
+  { code: '1', min: 10, max: 10 },     // US / Canada
+  { code: '7', min: 10, max: 10 },     // Russia / Kazakhstan
+  { code: '20', min: 9, max: 10 },     // Egypt
+  { code: '27', min: 9, max: 9 },      // South Africa
+  { code: '30', min: 10, max: 10 },    // Greece
+  { code: '31', min: 9, max: 9 },      // Netherlands
+  { code: '32', min: 8, max: 9 },      // Belgium
+  { code: '33', min: 9, max: 9 },      // France
+  { code: '34', min: 9, max: 9 },      // Spain
+  { code: '36', min: 8, max: 9 },      // Hungary
+  { code: '39', min: 9, max: 11 },     // Italy
+  { code: '40', min: 9, max: 9 },      // Romania
+  { code: '41', min: 9, max: 9 },      // Switzerland
+  { code: '43', min: 10, max: 13 },    // Austria
+  { code: '44', min: 10, max: 10 },    // UK
+  { code: '45', min: 8, max: 8 },      // Denmark
+  { code: '46', min: 7, max: 13 },     // Sweden
+  { code: '47', min: 8, max: 8 },      // Norway
+  { code: '48', min: 9, max: 9 },      // Poland
+  { code: '49', min: 6, max: 13 },     // Germany
+  { code: '52', min: 10, max: 10 },    // Mexico
+  { code: '54', min: 10, max: 11 },    // Argentina
+  { code: '55', min: 10, max: 11 },    // Brazil
+  { code: '57', min: 10, max: 10 },    // Colombia
+  { code: '58', min: 10, max: 10 },    // Venezuela
+  { code: '60', min: 9, max: 10 },     // Malaysia
+  { code: '61', min: 9, max: 9 },      // Australia
+  { code: '62', min: 9, max: 12 },     // Indonesia
+  { code: '63', min: 10, max: 10 },    // Philippines
+  { code: '64', min: 8, max: 10 },     // New Zealand
+  { code: '65', min: 8, max: 8 },      // Singapore
+  { code: '66', min: 9, max: 9 },      // Thailand
+  { code: '81', min: 9, max: 10 },     // Japan
+  { code: '82', min: 9, max: 10 },     // South Korea
+  { code: '84', min: 9, max: 10 },     // Vietnam
+  { code: '86', min: 11, max: 11 },    // China
+  { code: '90', min: 10, max: 10 },    // Turkey
+  { code: '91', min: 10, max: 10 },    // India
+  { code: '92', min: 10, max: 10 },    // Pakistan
+  { code: '93', min: 9, max: 9 },      // Afghanistan
+  { code: '94', min: 9, max: 9 },      // Sri Lanka
+  { code: '95', min: 8, max: 10 },     // Myanmar
+  { code: '98', min: 10, max: 10 },    // Iran
+  { code: '212', min: 9, max: 9 },     // Morocco
+  { code: '234', min: 10, max: 10 },   // Nigeria
+  { code: '254', min: 9, max: 9 },     // Kenya
+  { code: '351', min: 9, max: 9 },     // Portugal
+  { code: '352', min: 8, max: 9 },     // Luxembourg
+  { code: '353', min: 9, max: 9 },     // Ireland
+  { code: '354', min: 7, max: 9 },     // Iceland
+  { code: '358', min: 9, max: 10 },    // Finland
+  { code: '370', min: 8, max: 8 },     // Lithuania
+  { code: '371', min: 8, max: 8 },     // Latvia
+  { code: '372', min: 7, max: 8 },     // Estonia
+  { code: '380', min: 9, max: 9 },     // Ukraine
+  { code: '381', min: 8, max: 9 },     // Serbia
+  { code: '420', min: 9, max: 9 },     // Czech Republic
+  { code: '421', min: 9, max: 9 },     // Slovakia
+  { code: '852', min: 8, max: 8 },     // Hong Kong
+  { code: '886', min: 9, max: 9 },     // Taiwan
+  { code: '966', min: 9, max: 9 },     // Saudi Arabia
+  { code: '971', min: 8, max: 9 },     // UAE
+  { code: '972', min: 8, max: 9 },     // Israel
+  { code: '992', min: 9, max: 9 },     // Tajikistan
+  { code: '993', min: 8, max: 8 },     // Turkmenistan
+  { code: '994', min: 9, max: 9 },     // Azerbaijan
+  { code: '995', min: 9, max: 9 },     // Georgia
+  { code: '996', min: 9, max: 9 },     // Kyrgyzstan
+  { code: '998', min: 9, max: 9 },     // Uzbekistan
+];
+
+const validatePhone = (raw: string): boolean => {
+  // Phone is optional — empty input is valid.
+  if (raw.trim() === '') return true;
+
+  // Normalise: keep leading `+`, strip everything but digits.
+  const trimmed = raw.trim();
+  const hasPlus = trimmed.startsWith('+');
+  let digits = trimmed.replace(/\D/g, '');
+
+  // Convert international dial-out prefix `00` to `+`.
+  if (!hasPlus && digits.startsWith('00')) {
+    digits = digits.slice(2);
+  } else if (!hasPlus) {
+    // No country code provided. Allow only the US/CA 10-digit national
+    // form; reject everything else (including sequences like "00000").
+    if (digits.length === 10 && /^[2-9]/.test(digits)) {
+      return true;
+    }
+    return false;
+  }
+
+  // E.164 hard limit: 1–15 digits after the country code prefix.
+  if (digits.length < 4 || digits.length > 15) return false;
+
+  // Match the longest country-code prefix first so e.g. "380..." is not
+  // interpreted as country code "3".
+  const sorted = [...COUNTRY_CODE_RULES].sort(
+    (a, b) => b.code.length - a.code.length,
+  );
+
+  for (const { code, min, max } of sorted) {
+    if (digits.startsWith(code)) {
+      const national = digits.slice(code.length);
+      if (national.length >= min && national.length <= max) {
+        // Reject obviously bogus sequences (all zeros).
+        if (/^0+$/.test(national)) return false;
+        return true;
+      }
+      return false;
+    }
+  }
+
+  return false;
+};
+
 function App() {
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -187,6 +315,8 @@ function App() {
                       value={formData.phone}
                       onChange={(e) => updateFormData('phone', e.target.value)}
                       placeholder="+1 (555) 123-4567"
+                      inputMode="tel"
+                      autoComplete="tel"
                     />
                   </div>
                 </div>
@@ -195,11 +325,17 @@ function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (validatePersonalInfo()) {
-                        goToNext();
-                      } else {
+                      if (!validatePersonalInfo()) {
                         setStepError('Please fill in all required fields correctly');
+                        return;
                       }
+                      if (!validatePhone(formData.phone)) {
+                        setStepError(
+                          'Please enter a valid phone number with country code (e.g. +1 555 123 4567, +44 20 7946 0958, +7 701 234 5678)',
+                        );
+                        return;
+                      }
+                      goToNext();
                     }}
                     className="button-primary"
                   >
