@@ -163,9 +163,15 @@
   background: var(--stepper-success);
 }
 
+/* Error message slot — always reserves vertical space so that showing/hiding
+   the validation error does not shift the form content below. */
+.step-navigation__error-slot {
+  margin-top: 1rem;
+  min-height: 3rem;
+}
+
 /* Error message */
 .step-navigation__error {
-  margin-top: 1rem;
   padding: 0.75rem;
   background: #fef2f2;
   border: 1px solid var(--stepper-error);

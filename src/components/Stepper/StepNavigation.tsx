@@ -72,6 +72,8 @@ export const StepNavigation = ({
     });
   }, [currentStep]);
 
+  const errorMessage = steps[currentStep]?.errorMessage;
+
   return (
     <nav
       ref={navRef}
@@ -167,15 +169,13 @@ export const StepNavigation = ({
           );
         })}
       </ol>
-      {steps[currentStep]?.errorMessage && (
-        <div
-          className="step-navigation__error"
-          role="alert"
-          aria-live="assertive"
-        >
-          {steps[currentStep].errorMessage}
-        </div>
-      )}
+      <div className="step-navigation__error-slot" aria-live="assertive">
+        {errorMessage && (
+          <div className="step-navigation__error" role="alert">
+            {errorMessage}
+          </div>
+        )}
+      </div>
     </nav>
   );
 };
